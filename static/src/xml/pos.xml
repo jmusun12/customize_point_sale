@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="PosInvoiceCustomize" xml:space="preserve">
+    <t t-extend="ReceiptScreenWidget">
+        <t t-jquery=".print" t-operation="after">
+            <div class="button js_print_invoice">
+                <i class='fa fa-print'></i> Imprimir Factura
+            </div>
+        </t>
+    </t>
+</templates>

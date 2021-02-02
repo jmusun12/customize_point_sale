@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+ 	<template id="report_invoice_imagen_pdv">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="lang" t-value="o.invoice_user_id.sudo().lang if o.type in ('in_invoice', 'in_refund') else o.partner_id.lang"/>
+                <t t-call="reports.report_factura_imagen_pdv" t-lang="lang"/>
+            </t>
+        </t>
+    </template>
+
+	<!--Plantilla para factura imagen-->
+    <template id="report_factura_imagen_pdv">
+        <!--Reemplazar el encabezado por defecto del external_layout-->
+
+        <xpath expr="//div[@class='header']" position="replace">
+            <div class="header">
+                <!-- code -->
+            </div>
+        </xpath>
+        <t t-call="web.external_layout">
+            <t t-set="o" t-value="o.with_context(lang=lang)" />
+
+            <div class="page" style="font-size: 11px !important;">
+                <!--Numero de factura-->
+                <div class="row">
+                   <div class="col-12 text-right" style="padding-top: 16mm !important;">
+                       <p style="padding-right: 7mm !important;">
+                            <t t-if="not o.correlativo">
+                                <span t-field="o.name"></span>
+                            </t>
+                            <t t-else="">
+                                <t t-set="correlativo" t-value="o.getCorrelativo(o.correlativo)"/>
+                                <span t-esc="correlativo"></span>
+                            </t>
+                        </p>
+                   </div>
+                </div>
+
+                <!--Datos de la factura-->
+                <div class="row">
+                    <div class="col-12" style="padding-top: 15mm !important;">
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td style="width: 95mm !important;"></td>
+                                    <td style="width: 50mm !important;">
+                                        <t t-if="o.invoice_date"><span t-field="o.invoice_date"></span></t>
+                                        <t t-else="else">
+                                            <span>No Aplica</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-left: 9mm !important; padding-top: 4mm !important;">
+                                        <t t-if="o.partner_id.display_name">
+                                            <span t-field="o.partner_id.display_name"></span>
+                                        </t>
+                                        <t t-else="else">
+                                            <span>No Aplica</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-left: 12mm !important; padding-top: 2.5mm !important;">
+                                        <t t-if="o.partner_id.city or o.partner_id.street or o.partner_id.street2">
+                                            <t t-set="direccionCorta" t-value="o.getNombreCortoDireccion(o.partner_id.street, o.partner_id.city, 60)"/>
+                                            <t t-esc="direccionCorta"/>
+                                        </t>
+                                        <t t-else="else">
+                                            <span>No Aplica</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 95mm !important; padding-left: 24mm !important; padding-top: 2.5mm !important;">
+                                        <t t-if="o.user_id.name">
+                                            <span t-field="o.user_id.name"></span>
+                                        </t>
+                                        <t t-else="else">
+                                            <span>No Aplica</span>
+                                        </t>
+                                    </td>
+                                    <td style="width: 40mm !important; padding-left: 12mm; padding-top: 2.5mm !important;">
+                                        <t t-if="o.partner_id.vat">
+                                            <span t-field="o.partner_id.vat"></span>
+                                        </t>
+                                        <t t-else="else">
+                                            <span>No Aplica</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!--Listado de productos-->
+                <div class="row">
+                    <div class="col-12 tabla-productos" style="padding-top: 9mm !important; height: 109.5mm !important;">
+                        <table style="width: 100%;">
+                            <tbody>
+                                <t t-set="current_subtotal" t-value="0"/>
+                                <t t-set="lines" t-value="o.invoice_line_ids.sorted(key=lambda l: (-l.sequence, l.date, l.move_name, -l.id), reverse=True)"/>
+
+                                <t t-foreach="lines" t-as="line">
+                                    <t t-set="current_subtotal" t-value="current_subtotal + line.price_subtotal" groups="account.group_show_line_subtotals_tax_excluded"/>
+                                    <t t-set="current_subtotal" t-value="current_subtotal + line.price_total" groups="account.group_show_line_subtotals_tax_included"/>
+
+                                    <!--Acortamos el nombre del producto-->
+                                    <t t-set="nombre" t-value="line.name.split(']')[1]"/>
+                                    <t t-set="nombreCorto" t-value="o.getNombreCorto(nombre,30)"/>
+
+                                    <tr>
+                                        <td class="text-left" style="width: 10mm;"><!--Cantidad-->
+                                            <span t-esc="int(round(line.quantity, 0))"/>
+                                        </td>
+                                        <td class="text-left" style="width: 57mm;"><!--Descripcion-->
+                                            <t t-esc="nombreCorto"/>
+                                        </td>
+                                        <td class="text-right" style="width:14mm;"><!--Precio unitario-->
+                                            <span t-field="line.price_unit"/>
+                                        </td>
+                                        <td style="width: 12mm !important;"></td><!--Ventas no sujetas-->
+                                        <td class="text-right" style="width: 15mm;"><!--Ventas exentas-->
+                                            <span t-field="line.price_subtotal" groups="account.group_show_line_subtotals_tax_excluded"/>
+                                            <span t-field="line.price_total" groups="account.group_show_line_subtotals_tax_included"/>
+                                        </td>
+                                        <td style="width: 17mm !important;"></td><!--Ventas gravadas-->
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <table style="width: 100%;">
+                            <tbody>
+                                <tr>
+                                    <td colspan="2" class="text-left" style="width: 67mm;padding-left: 5mm;">
+                                        <span></span><span t-field="o.amount_text"></span>
+                                    </td>
+                                    <td class="text-right" style="width:14mm;">
+
+                                    </td>
+                                    <td style="width: 12mm !important;"></td>
+                                    <td class="text-right" style="width: 15mm;"><!--Sumas-->
+                                        <span t-field="o.amount_untaxed"/>
+                                    </td>
+                                    <td style="width: 17mm !important;"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td class="text-right" style="padding-top: 1.1mm !important;"><!--Iva retenido-->
+                                        <span>$ 0.00</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td class="text-right" style="padding-top: 2mm !important;"><!--Sub-Total-->
+                                        <span t-field="o.amount_total"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td class="text-right" style="padding-top: 2mm !important;"><!--Ventas no sujetas-->
+                                        <span>$ 0.00</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td class="text-right" style="padding-top: 2mm !important;"><!--venta exenta-->
+                                        <span t-field="o.amount_total"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-left">
+
+                                    </td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td></td>
+                                    <td class="text-right">
+
+                                    </td>
+                                    <td class="text-right" style="padding-top: 2mm !important;"><!--venta total-->
+                                        <span t-field="o.amount_total"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <xpath expr="//div[@class='footer']" position="replace">
+                <div class="footer">
+                    <!-- code -->
+                </div>
+            </xpath>
+        </t>
+        <style>
+            th, td {
+                resize: both; overflow: auto;
+            }
+        </style>
+    </template>
+
+     <record id="pos_invoice_report_imagen" model="ir.actions.report">
+        <field name="name">Invoice</field>
+        <field name="model">pos.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">customize_point_sale.report_invoice_imagen_pdv</field>
+        <field name="print_report_name">'Invoice - %s' % (object.name)</field>
+    </record>
+</odoo>
